@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерфейс с кнопками</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 500px;
+        }
+
+        .modal {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            cursor: move;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .cat-image {
+                max-width: 500px;
+            max-height: 500px;
+            width: auto;
+            height: auto;
+        }
+
+        .button {
+            padding: 10px 20px;
+            background-color: white;
+            border: 2px solid #8e44ad;
+            border-radius: 10px;
+            color: #8e44ad;
+            font-size: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #8e44ad;
+            color: white;
+        }
+
+        .emoji {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-container" class="container">
+        <div class="button" onclick="requestJoke()">Запросить шутку <span class="emoji">🤣</span></div>
+        <div id="joke-container"></div>
+        <div class="button" onclick="requestCat()">Вывести кота <span class="emoji">🐈</span></div>
+        <div id="cat-container"></div>
+        <div class="button" onclick="requestNumberFact()">Запросить Факт о числе <span class="emoji">🔢</span></div>
+        <div class="input-container">
+            <label for="number-input">Введите число до 100:</label>
+            <input type="number" id="number-input" placeholder="Например, 52">
+            <div id="fact-container"></div>
+        </div>
+        <div class="button" onclick="requestHackerHeadlines()">Узнать заголовки о хакерах <span class="emoji">👨‍💻</span></div>
+        <div id="headlines-container"></div>
+        <div class="button" onclick="fetchQuotes()">Узнать последние цитаты <span class="emoji">📜</span></div>
+        <div id="quotes-container"></div>
+        <div class="button" onclick="turnOff()">Выключить эту ерунду</div>
+    </div>
+    
+    <div id="cat-screen" class="hidden">
+        <h2>Ваш кот:</h2>
+        <img id="cat-image" class="cat-image" src="" alt="Кот">
+        <div class="back-button">
+            <button class="button" onclick="goBack()">Назад на основной экран</button>
+        </div>
+    </div>
+    
+
+<script>
+    
+    function requestJoke() {
+        fetch('http://localhost:8080/api/v1/joke')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при запросе шутки');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const jokeText = data.joke;
+                const jokeCategory = data.category;
+
+                const jokeContainer = document.getElementById('joke-container');
+                jokeContainer.innerHTML = `
+                    <h3>Категория: ${jokeCategory}</h3>
+                    <p>${jokeText}</p>
+                `;
+            })
+            .catch(error => {
+                alert(error.message);
+        });
+    }
+        
+    function requestCat() {
+        const apiUrl = 'http://localhost:8080/api/v1/cat';
+
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при запросе кота');
+                }
+                return response.blob(); 
+            })
+            .then(blob => {
+                const imageUrl = URL.createObjectURL(blob);
+                const img = document.getElementById('cat-image');
+                img.src = imageUrl;
+                img.alt = 'Ваш кот';
+
+                showCatScreen();
+            })
+            .catch(error => {
+                alert(error.message);
+            });
+    }
+
+
+    function showCatScreen() {
+        document.getElementById('main-container').classList.add('hidden'); 
+        document.getElementById('cat-screen').classList.remove('hidden');
+
+        history.pushState({}, '', '#cat');
+
+        window.addEventListener('popstate', function() {
+            goBack();
+        });
+    }
+
+    function goBack() {
+        document.getElementById('cat-screen').classList.add('hidden'); 
+        document.getElementById('main-container').classList.remove('hidden'); 
+        
+        history.back();
+    }
+
+
+    function requestNumberFact() {
+        const numberInput = document.getElementById('number-input').value;
+
+        fetch(`http://localhost:8080/api/v1/fact?id=${numberInput}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при запросе факта о числе');
+                }
+
+                return response.json();
+                })
+            .then(data => {
+                const fact = data.fact;
+
+                const factContainer = document.getElementById('fact-container');
+                factContainer.innerHTML = `<p><strong>Факт о числе ${numberInput}:</strong> ${fact}</p>`;
+            })
+            .catch(error => {
+                alert(error.message);
+            });
+    }
+
+    function fetchQuotes() {
+        fetch('http://localhost:8080/api/v1/quotes')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка сети');
+                }
+
+                return response.json();
+            })
+            .then(data => {
+
+                displayQuotes(data);
+            })
+            .catch(error => {
+                console.error('Ошибка при получении цитат:', error);
+                alert('Не удалось загрузить цитаты.');
+            });
+    }
+
+    function displayQuotes(quotes) {
+        const quotesContainer = document.getElementById('quotes-container');
+        
+        quotesContainer.innerHTML = '';
+
+        quotes.slice(0, 5).forEach(quote => {
+            const quoteElement = document.createElement('div');
+            quoteElement.style.marginBottom = "10px";
+            quoteElement.innerHTML = `<strong>${quote.author}</strong>: ${quote.text}`;
+            quotesContainer.appendChild(quoteElement);
+        });
+    }
+
+    function requestHackerHeadlines() {
+        const apiUrl = 'http://localhost:8080/api/v1/news';
+
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayHackerHeadlines(data);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    }
+
+    function displayHackerHeadlines(headlinesData) {
+        const headlinesContainer = document.getElementById('headlines-container');
+        
+        headlinesContainer.innerHTML = ''; 
+
+        const headlinesList = document.createElement('ul');
+
+        for (let i = 0; i < 10; i += 2) {
+            const headline = headlinesData[i];
+            const url = headlinesData[i + 1];
+
+            const headlineItem = document.createElement('li');
+            
+            const headlineLink = document.createElement('a');
+            headlineLink.href = `http://${url}`;
+            headlineLink.textContent = headline;
+            headlineLink.target = '_blank'; 
+            headlineLink.style.color = 'blue';
+            headlineLink.style.textDecoration = 'underline'; 
+
+            headlineItem.appendChild(headlineLink);
+            headlinesList.appendChild(headlineItem); 
+        }
+
+        headlinesContainer.appendChild(headlinesList); 
+    }
+
+
+    function turnOff() {
+        if (confirm('Вы уверены, что хотите покинуть сайт?')) {
+            window.location.href = 'https://www.google.com';
+        }
+    }
+
+</script>
+
+</body>
+</html>
